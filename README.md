@@ -2,7 +2,7 @@
 
 A modern, fully responsive **multi-vendor marketplace** built on **native PHP (custom lightweight MVC)**, **MySQL/MariaDB (PDO + prepared statements)**, and **MDBootstrap (CDN)**. Customers browse and buy; sellers run their own shops; admins govern the marketplace.
 
-This repository implements **Phase 1 + Phase 2** of the PRD. The schema and hooks are laid out so Phases 3–4 drop in cleanly.
+This repository implements **Phases 1–4** of the PRD: storefront/auth/checkout (1), seller & admin tools + reviews (2), online payments & coupons (3), and analytics + performance hardening (4).
 
 > Built against the *Ecommerce-Site-PRD.md* (v1.0). Product approval is **configurable (defaults to auto-publish)**; seller revenue uses a **per-seller commission** model.
 
@@ -35,6 +35,20 @@ This repository implements **Phase 1 + Phase 2** of the PRD. The schema and hook
   - **Settings**: payment-gateway toggles + keys (eSewa/Khalti/Fonepay/COD), commission, approval mode, shipping, currency, site info
   - **Audit log**: every critical action is recorded
 - **Reviews & ratings**: customers submit one review per product (auto-approved by default, or admin-moderated); aggregates shown on product cards/detail
+
+### Phase 3 — Online payments (server-to-server) & coupons
+- **eSewa, Khalti, Fonepay** — full redirect/JS-widget flows with **server-to-server verification** (never trust the callback alone):
+  - eSewa: signed (`sct` HMAC) redirect → verify via `epay/transrec` XML
+  - Khalti: Khalti Checkout JS widget → verify token via the Khalti Verify API (`Authorization: Key`)
+  - Fonepay: merchant-request redirect (`DV` HMAC) → verify via the merchant verification API
+  - Config per gateway (merchant id/code, secret, public key, **test/live environment**) from **Admin → Settings**; test endpoints default so you can validate without live keys
+  - Order stays `placed`/`pending` until the gateway confirms; confirmed orders flip to `paid`/`confirmed` and every attempt is logged in `payments` + audit
+  - Payment-return/callback routes are **CSRF-exempt** but verified by the gateway signature — this is intentional and documented
+- **Coupons & discounts** — admin-managed coupons (percentage/flat, min order, expiry, usage limit, active/inactive), apply/remove from the cart, reflected in checkout totals and stored per order; usage is counted and surfaced in analytics
+
+### Phase 4 — Analytics & performance
+- **Admin analytics/reports** (`/admin/analytics`): revenue & order trends over selectable ranges (7–90 days), KPI cards, order-status and payment-method breakdowns, top sellers/products, coupon usage — charted with Chart.js
+- **Performance hardening**: additional indexes on high-traffic tables (`orders.created_at`, `orders.payment_method`, `payments.status`, `reviews.status`, `order_items.product_id`), pagination on every admin list (users, sellers, products, orders, reviews, coupons), settings cached per request, and bounded queries throughout
 
 ---
 
@@ -152,6 +166,8 @@ location ~ \.php$ { include fastcgi_params; fastcgi_pass unix:/run/php/php8.2-fp
 | Seller   | apparel@nepmart.test     | `seller123`   |
 | Customer | buyer@nepmart.test       | `customer123` |
 
+**Demo coupons** (seeded): `WELCOME10` (10% off, min रू 1,000) and `SAVE200` (flat रू 200 off, min रू 1,500). Apply one in the cart.
+
 > **Change these immediately** on any real deployment. Admins are never self-registerable — create them via the seeder / a controlled process.
 
 ---
@@ -167,7 +183,10 @@ Runtime settings live in the `settings` table (editable from **Admin → Setting
 | `approval_mode` | `auto` | `auto` = products go live immediately; `pending` = require admin approval |
 | `default_commission_rate` | `10.00` | Applied to new sellers (editable per seller) |
 | `cod_enabled` | `1` | Cash on Delivery |
-| `esewa_enabled` / `khalti_enabled` / `fonepay_enabled` | `0` | Payment gateways (Phase 3) |
+| `esewa_enabled` / `khalti_enabled` / `fonepay_enabled` | `0` | Enable each online gateway |
+| `esewa_merchant_id` / `esewa_secret` / `esewa_environment` | — / — / `test` | eSewa credentials + mode |
+| `khalti_public_key` / `khalti_secret_key` / `khalti_environment` | — / — / `test` | Khalti credentials + mode |
+| `fonepay_merchant_code` / `fonepay_secret` / `fonepay_environment` | — / — / `test` | Fonepay credentials + mode |
 | `free_shipping_threshold` / `shipping_fee` | `2000` / `150` | Checkout shipping logic |
 | `review_auto_approve` | `1` | Auto-approve customer reviews (else admin moderates) |
 
@@ -216,11 +235,11 @@ Admin*:     /admin  ·  /admin/users  ·  /admin/sellers (/approve · /suspend �
 
 - **Phase 1 ✅** — MVC, schema, 3-role auth + RBAC, storefront, cart, COD checkout
 - **Phase 2 ✅** — Seller product CRUD + shop profile + orders/fulfillment; Admin management (users, sellers, products, categories, orders, reviews, banners, pages, settings, audit); customer reviews & moderation
-- **Phase 3** — eSewa, Khalti, Fonepay server-to-server verification; coupons/discounts
-- **Phase 4** — Admin analytics/reports, performance hardening
+- **Phase 3 ✅** — eSewa, Khalti, Fonepay server-to-server verification; coupons/discounts
+- **Phase 4 ✅** — Admin analytics/reports, performance hardening
 - **Phase 5 (future)** — Multi-language, native mobile apps, live chat, recommendations
 
-The schema already includes `coupons`, gateway columns in `payments`, and commission accounting in `order_items`, so later phases extend rather than rework.
+> **Testing payments:** enable a gateway under **Admin → Settings**, leave it in `test` mode, and place an order choosing that method. The flow works end-to-end against the sandbox once you supply the gateway's sandbox keys. Without keys the gateway stays "disabled" and COD is used.
 
 ---
 
@@ -229,7 +248,7 @@ The schema already includes `coupons`, gateway columns in `payments`, and commis
 - **No Composer dependency** — pure native PHP.
 - Images are lightweight inline **SVG** under `public/assets/img`; seller/admin uploads go to `public/uploads/` (git-ignored).
 - MDBootstrap loads from a CDN; vendor the CSS/JS locally for air-gapped installs.
-- Phase 2 was built without a PHP/MySQL runtime in the build sandbox; code was reviewed and structurally validated (balanced braces/parens, all view/method references resolve, forms non-nested). A `php -l` sweep + import test on your side is recommended.
+- Phases 1–4 were built without a PHP/MySQL runtime in the build sandbox; all PHP was structurally validated (balanced braces/parens, string/heredoc/comment handling, all view/method references resolve, forms non-nested) and the SQL was reviewed. A `php -l` sweep + `database/nepmart.sql` import test on your side is still recommended. Online gateways additionally require live/sandbox credentials from eSewa, Khalti, and Fonepay to be exercised end-to-end.
 
 ## License
 

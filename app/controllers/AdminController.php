@@ -7,6 +7,7 @@ use App\Core\Upload;
 use App\Models\AuditLog;
 use App\Models\Banner;
 use App\Models\Category;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Page;
@@ -59,7 +60,7 @@ class AdminController extends \App\Core\Controller
     {
         $q = $this->request->query('q', '');
         $role = $this->request->query('role', '');
-        $users = User::forAdmin($q, $role);
+        $users = User::forAdmin($q, $role, ['page' => $this->request->query('page', 1)]);
         $this->view('admin/users/index', compact('users', 'q', 'role'), 'dashboard');
     }
 
@@ -98,7 +99,7 @@ class AdminController extends \App\Core\Controller
     public function sellers(): void
     {
         $pending = Seller::pending();
-        $sellers = Seller::allWithStats();
+        $sellers = Seller::adminListing(['page' => $this->request->query('page', 1)]);
         $this->view('admin/sellers/index', compact('pending', 'sellers'), 'dashboard');
     }
 
@@ -305,7 +306,10 @@ class AdminController extends \App\Core\Controller
     // ------------------------------------------------------------------
     public function reviews(): void
     {
-        $reviews = Review::forAdmin(['status' => $this->request->query('status', '')]);
+        $reviews = Review::forAdmin([
+            'status' => $this->request->query('status', ''),
+            'page'   => $this->request->query('page', 1),
+        ]);
         $this->view('admin/reviews/index', compact('reviews'), 'dashboard');
     }
 
@@ -425,6 +429,160 @@ class AdminController extends \App\Core\Controller
     }
 
     // ------------------------------------------------------------------
+    //  Coupons (Phase 3)
+    // ------------------------------------------------------------------
+    public function coupons(): void
+    {
+        $coupons = Coupon::all('id DESC');
+        $this->view('admin/coupons/index', compact('coupons'), 'dashboard');
+    }
+
+    public function couponStore(): void
+    {
+        $data = $this->request->only(['code', 'type', 'value', 'min_order', 'expiry', 'usage_limit', 'status']);
+        $errors = $this->validate($data, [
+            'code'  => 'required|min:2|max:60',
+            'type'  => 'required|in:percentage,flat',
+            'value' => 'required|numeric',
+        ]);
+        if ($errors) { $this->failWith('/admin/coupons', $errors); }
+
+        $code = strtoupper(trim($data['code']));
+        if (Coupon::findByCode($code)) {
+            $this->error('That coupon code already exists.', '/admin/coupons');
+        }
+
+        Coupon::create([
+            'code'        => $code,
+            'type'        => $data['type'],
+            'value'       => (float) $data['value'],
+            'min_order'   => $data['min_order'] !== '' ? (float) $data['min_order'] : null,
+            'expiry'      => $data['expiry'] ?: null,
+            'usage_limit' => $data['usage_limit'] !== '' ? (int) $data['usage_limit'] : null,
+            'status'      => $data['status'] ?? 'active',
+        ]);
+        AuditLog::record(Auth::id(), 'admin.coupon.create', $code);
+        $this->success("Coupon {$code} created.", '/admin/coupons');
+    }
+
+    public function couponUpdate(int $id): void
+    {
+        $coupon = Coupon::find($id);
+        if (!$coupon) { $this->abort(404); }
+        $data = $this->request->only(['type', 'value', 'min_order', 'expiry', 'usage_limit', 'status']);
+        $errors = $this->validate($data, [
+            'type'  => 'required|in:percentage,flat',
+            'value' => 'required|numeric',
+        ]);
+        if ($errors) { $this->failWith('/admin/coupons', $errors); }
+
+        Coupon::updateById($id, [
+            'type'        => $data['type'],
+            'value'       => (float) $data['value'],
+            'min_order'   => $data['min_order'] !== '' ? (float) $data['min_order'] : null,
+            'expiry'      => $data['expiry'] ?: null,
+            'usage_limit' => $data['usage_limit'] !== '' ? (int) $data['usage_limit'] : null,
+            'status'      => $data['status'] ?? 'active',
+        ]);
+        AuditLog::record(Auth::id(), 'admin.coupon.update', "Coupon #{$id}");
+        $this->success('Coupon updated.', '/admin/coupons');
+    }
+
+    public function couponDelete(int $id): void
+    {
+        $coupon = Coupon::find($id);
+        if (!$coupon) { $this->abort(404); }
+        Coupon::deleteById($id);
+        AuditLog::record(Auth::id(), 'admin.coupon.delete', $coupon['code']);
+        $this->success('Coupon deleted.', '/admin/coupons');
+    }
+
+    // ------------------------------------------------------------------
+    //  Analytics & reports (Phase 4)
+    // ------------------------------------------------------------------
+    public function analytics(): void
+    {
+        $days   = max(7, min(90, (int) $this->request->query('days', 30)));
+        $from   = date('Y-m-d', strtotime("-$days days"));
+
+        // Daily revenue + order counts for the last N days.
+        $daily = Database::fetchAll(
+            "SELECT DATE(o.created_at) AS d,
+                    COALESCE(SUM(o.total),0) AS revenue,
+                    COUNT(*) AS orders
+             FROM orders o
+             WHERE o.created_at >= ? AND o.status <> 'cancelled'
+             GROUP BY DATE(o.created_at) ORDER BY d ASC",
+            [$from . ' 00:00:00']
+        );
+        $dailyMap = [];
+        foreach ($daily as $row) {
+            $dailyMap[$row['d']] = $row;
+        }
+        $chartLabels = [];
+        $chartRevenue = [];
+        $chartOrders  = [];
+        for ($i = $days - 1; $i >= 0; $i--) {
+            $d = date('Y-m-d', strtotime("-$i days"));
+            $chartLabels[]  = date('M j', strtotime($d));
+            $chartRevenue[] = (float) ($dailyMap[$d]['revenue'] ?? 0);
+            $chartOrders[]  = (int) ($dailyMap[$d]['orders'] ?? 0);
+        }
+
+        // KPIs over the same window.
+        $kpis = [
+            'revenue'  => (float) (Database::scalar(
+                "SELECT COALESCE(SUM(total),0) FROM orders WHERE created_at >= ? AND status <> 'cancelled'", [$from . ' 00:00:00']) ?? 0),
+            'orders'   => (int) (Database::scalar(
+                "SELECT COUNT(*) FROM orders WHERE created_at >= ? AND status <> 'cancelled'", [$from . ' 00:00:00']) ?? 0),
+            'customers'=> (int) (Database::scalar(
+                "SELECT COUNT(*) FROM users WHERE role='customer' AND created_at >= ?", [$from . ' 00:00:00']) ?? 0),
+            'products' => (int) (Database::scalar(
+                "SELECT COUNT(*) FROM products WHERE deleted_at IS NULL") ?? 0),
+        ];
+        $kpis['avg_order'] = $kpis['orders'] > 0 ? round($kpis['revenue'] / $kpis['orders'], 2) : 0.0;
+
+        // Order status breakdown.
+        $byStatus = Database::fetchAll(
+            "SELECT status, COUNT(*) AS n, COALESCE(SUM(total),0) AS revenue
+             FROM orders WHERE created_at >= ? GROUP BY status ORDER BY n DESC", [$from . ' 00:00:00']);
+
+        // Payment method breakdown.
+        $byMethod = Database::fetchAll(
+            "SELECT payment_method, COUNT(*) AS n, COALESCE(SUM(total),0) AS revenue
+             FROM orders WHERE created_at >= ? AND status <> 'cancelled'
+             GROUP BY payment_method ORDER BY n DESC", [$from . ' 00:00:00']);
+
+        // Top sellers by earnings.
+        $topSellers = Database::fetchAll(
+            "SELECT s.id, s.shop_name, COUNT(DISTINCT oi.order_id) AS orders,
+                    COALESCE(SUM(oi.seller_earnings),0) AS earnings
+             FROM order_items oi
+             JOIN orders o ON o.id = oi.order_id
+             JOIN sellers s ON s.id = oi.seller_id
+             WHERE o.created_at >= ? AND o.status <> 'cancelled'
+             GROUP BY s.id, s.shop_name ORDER BY earnings DESC LIMIT 10", [$from . ' 00:00:00']);
+
+        // Top products by revenue.
+        $topProducts = Database::fetchAll(
+            "SELECT oi.product_id, oi.product_name, SUM(oi.quantity) AS qty, SUM(oi.subtotal) AS revenue
+             FROM order_items oi JOIN orders o ON o.id = oi.order_id
+             WHERE o.created_at >= ? AND o.status <> 'cancelled'
+             GROUP BY oi.product_id, oi.product_name ORDER BY revenue DESC LIMIT 10", [$from . ' 00:00:00']);
+
+        // Coupon usage.
+        $couponUsage = Database::fetchAll(
+            "SELECT coupon_code, COUNT(*) AS uses, COALESCE(SUM(discount),0) AS total_discount
+             FROM orders WHERE coupon_code IS NOT NULL AND coupon_code <> '' AND created_at >= ?
+             GROUP BY coupon_code ORDER BY uses DESC LIMIT 10", [$from . ' 00:00:00']);
+
+        $this->view('admin/analytics/index', compact(
+            'days', 'chartLabels', 'chartRevenue', 'chartOrders', 'kpis',
+            'byStatus', 'byMethod', 'topSellers', 'topProducts', 'couponUsage'
+        ), 'dashboard');
+    }
+
+    // ------------------------------------------------------------------
     //  Settings (payment gateways + site config)
     // ------------------------------------------------------------------
     public function settings(): void
@@ -441,7 +599,7 @@ class AdminController extends \App\Core\Controller
             'approval_mode', 'default_commission_rate',
             'esewa_merchant_id', 'esewa_secret', 'esewa_environment',
             'khalti_public_key', 'khalti_secret_key', 'khalti_environment',
-            'fonepay_merchant_code', 'fonepay_secret',
+            'fonepay_merchant_code', 'fonepay_secret', 'fonepay_environment',
             'free_shipping_threshold', 'shipping_fee',
             'site_name', 'site_tagline', 'contact_email', 'contact_phone',
             'currency_symbol', 'currency_code',

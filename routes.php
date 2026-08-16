@@ -36,11 +36,26 @@ Router::post('/cart/update',  [App\Controllers\CartController::class, 'update'])
 Router::post('/cart/remove',  [App\Controllers\CartController::class, 'remove']);
 Router::post('/cart/clear',   [App\Controllers\CartController::class, 'clear']);
 
+// Coupons (Phase 3)
+Router::post('/cart/coupon',          [App\Controllers\CartController::class, 'applyCoupon']);
+Router::post('/cart/coupon/remove',   [App\Controllers\CartController::class, 'removeCoupon']);
+
 // ---- Checkout (login required) ----
 Router::get('/checkout',             [App\Controllers\CheckoutController::class, 'index']);
 Router::post('/checkout/place',      [App\Controllers\CheckoutController::class, 'place']);
 Router::get('/checkout/success/{id}',[App\Controllers\CheckoutController::class, 'success']);
 Router::get('/order/{id}/invoice',   [App\Controllers\CheckoutController::class, 'invoice']);
+
+// ---- Online payments (Phase 3) ----
+Router::get('/checkout/pay/{id}',       [App\Controllers\CheckoutController::class, 'pay']);
+Router::get('/checkout/failure/{id}',   [App\Controllers\CheckoutController::class, 'failure']);
+
+// Gateway returns / callbacks (external callers — CSRF-exempt, verified server-to-server)
+Router::get('/payment/return/{gateway}',  [App\Controllers\PaymentController::class, 'return']);
+Router::post('/payment/return/{gateway}', [App\Controllers\PaymentController::class, 'return']);
+Router::post('/payment/khalti/verify',    [App\Controllers\PaymentController::class, 'khaltiVerify']);
+Router::csrfExempt('/payment/return/{gateway}');
+Router::csrfExempt('/payment/khalti/verify');
 
 // ---- Customer dashboard ----
 Router::get('/account',                  [App\Controllers\AccountController::class, 'dashboard']);
@@ -120,6 +135,15 @@ Router::get('/admin/pages',                      [App\Controllers\AdminControlle
 Router::post('/admin/pages',                     [App\Controllers\AdminController::class, 'pageStore']);
 Router::post('/admin/pages/{id}',                [App\Controllers\AdminController::class, 'pageUpdate']);
 Router::post('/admin/pages/{id}/delete',         [App\Controllers\AdminController::class, 'pageDelete']);
+
+// Coupons (Phase 3)
+Router::get('/admin/coupons',                    [App\Controllers\AdminController::class, 'coupons']);
+Router::post('/admin/coupons',                   [App\Controllers\AdminController::class, 'couponStore']);
+Router::post('/admin/coupons/{id}',              [App\Controllers\AdminController::class, 'couponUpdate']);
+Router::post('/admin/coupons/{id}/delete',       [App\Controllers\AdminController::class, 'couponDelete']);
+
+// Analytics & reports (Phase 4)
+Router::get('/admin/analytics',                  [App\Controllers\AdminController::class, 'analytics']);
 
 // Settings + audit log
 Router::get('/admin/settings',                   [App\Controllers\AdminController::class, 'settings']);

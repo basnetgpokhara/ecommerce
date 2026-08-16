@@ -212,6 +212,8 @@ CREATE TABLE orders (
     UNIQUE KEY uq_orders_number (order_number),
     KEY ix_orders_customer (customer_id),
     KEY ix_orders_status (status),
+    KEY ix_orders_created (created_at),
+    KEY ix_orders_payment (payment_method),
     CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES users(id)
         ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -237,6 +239,7 @@ CREATE TABLE order_items (
     PRIMARY KEY (id),
     KEY ix_oitems_order (order_id),
     KEY ix_oitems_seller (seller_id),
+    KEY ix_oitems_product (product_id),
     CONSTRAINT fk_oitems_order FOREIGN KEY (order_id) REFERENCES orders(id)
         ON DELETE CASCADE,
     CONSTRAINT fk_oitems_product FOREIGN KEY (product_id) REFERENCES products(id)
@@ -259,6 +262,7 @@ CREATE TABLE payments (
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY ix_payments_order (order_id),
+    KEY ix_payments_status (status),
     CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -277,6 +281,7 @@ CREATE TABLE reviews (
     PRIMARY KEY (id),
     UNIQUE KEY uq_review_product_customer (product_id, customer_id),
     KEY ix_reviews_product (product_id),
+    KEY ix_reviews_status (status),
     CONSTRAINT fk_reviews_product  FOREIGN KEY (product_id)  REFERENCES products(id)  ON DELETE CASCADE,
     CONSTRAINT fk_reviews_customer FOREIGN KEY (customer_id) REFERENCES users(id)     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

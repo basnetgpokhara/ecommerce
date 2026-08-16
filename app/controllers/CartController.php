@@ -4,6 +4,7 @@ namespace App\Controllers;
 use App\Core\Auth;
 use App\Core\Session;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\Product;
 
 class CartController extends \App\Core\Controller
@@ -24,7 +25,47 @@ class CartController extends \App\Core\Controller
     {
         $items    = Cart::contents($this->uid());
         $subtotal = Cart::subtotal($this->uid());
-        $this->view('cart/index', compact('items', 'subtotal'));
+        $coupon   = $this->appliedCoupon($subtotal);
+        $discount = $coupon ? Coupon::discountFor($coupon, $subtotal) : 0.0;
+        $this->view('cart/index', compact('items', 'subtotal', 'coupon', 'discount'));
+    }
+
+    /** Apply a coupon code from the cart. */
+    public function applyCoupon(): void
+    {
+        $code   = trim((string) $this->request->input('coupon_code', ''));
+        $coupon = $code !== '' ? Coupon::findByCode($code) : null;
+
+        if (!$coupon) {
+            $this->error('That coupon code does not exist.', '/cart');
+        }
+        if (!Coupon::isValid($coupon, Cart::subtotal($this->uid()))) {
+            $this->error('This coupon is not applicable to your cart (expired, inactive, or below the minimum).', '/cart');
+        }
+
+        Session::set('coupon_code', $coupon['code']);
+        $this->success('Coupon applied: ' . $coupon['code'] . '.', '/cart');
+    }
+
+    /** Remove the applied coupon. */
+    public function removeCoupon(): void
+    {
+        Session::forget('coupon_code');
+        $this->success('Coupon removed.', '/cart');
+    }
+
+    /** Coupon currently applied in the session, if still valid. */
+    private function appliedCoupon(float $subtotal): ?array
+    {
+        $code = (string) Session::get('coupon_code', '');
+        if ($code === '') {
+            return null;
+        }
+        $coupon = Coupon::findByCode($code);
+        if ($coupon && Coupon::isValid($coupon, $subtotal)) {
+            return $coupon;
+        }
+        return null;
     }
 
     /** Add (or increment) a product. Supports ?buy_now to go straight to checkout. */

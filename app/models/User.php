@@ -26,8 +26,8 @@ class User extends \App\Core\Model
         return self::count("role = ? AND status = 'active'", [$role]);
     }
 
-    /** Admin: searchable, role-filterable user list. */
-    public static function forAdmin(?string $q = null, ?string $role = null): array
+    /** Admin: searchable, role-filterable, paginated user list. */
+    public static function forAdmin(?string $q = null, ?string $role = null, array $f = []): array
     {
         $where = [];
         $params = [];
@@ -41,6 +41,19 @@ class User extends \App\Core\Model
             $params[] = $role;
         }
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        return Database::fetchAll("SELECT * FROM users $whereSql ORDER BY id DESC", $params);
+
+        $perPage = max(1, min(100, (int) ($f['per_page'] ?? 25)));
+        $page    = max(1, (int) ($f['page'] ?? 1));
+        $offset  = ($page - 1) * $perPage;
+        $total   = (int) (Database::scalar("SELECT COUNT(*) FROM users $whereSql", $params) ?? 0);
+
+        $rows = Database::fetchAll(
+            "SELECT * FROM users $whereSql ORDER BY id DESC LIMIT $perPage OFFSET $offset",
+            $params
+        );
+        return [
+            'items' => $rows, 'total' => $total, 'page' => $page,
+            'per_page' => $perPage, 'last_page' => (int) max(1, ceil($total / $perPage)),
+        ];
     }
 }

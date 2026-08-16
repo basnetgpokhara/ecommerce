@@ -8,6 +8,29 @@ namespace App\Core;
 class Router
 {
     private static array $routes = [];
+    private static array $csrfExempt = [];
+
+    /**
+     * Mark a route path as CSRF-exempt. Used only for external payment-gateway
+     * callbacks/returns, which cannot carry our session CSRF token but are
+     * verified independently by the gateway's server-to-server signature.
+     * Supports the same {param} placeholders as routes.
+     */
+    public static function csrfExempt(string $path): void
+    {
+        $pattern = preg_replace('#\{([a-zA-Z_][a-zA-Z0-9_]*)\}#', '[^/]+', '/' . trim($path, '/'));
+        self::$csrfExempt[] = '#^' . $pattern . '$#';
+    }
+
+    private static function isCsrfExempt(string $path): bool
+    {
+        foreach (self::$csrfExempt as $pattern) {
+            if (preg_match($pattern, $path)) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     public static function add(string $method, string $path, $action): void
     {
@@ -35,10 +58,12 @@ class Router
 
     public static function dispatch(Request $request): void
     {
-        Csrf::verify();
-
         $path   = $request->path === '' ? '/' : $request->path;
         $method = $request->method;
+
+        if (!self::isCsrfExempt($path)) {
+            Csrf::verify();
+        }
 
         foreach (self::$routes as $route) {
             if ($route['method'] !== $method) {

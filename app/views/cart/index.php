@@ -1,4 +1,4 @@
-<?php /** @var array $items @var float $subtotal */ ?>
+<?php /** @var array $items @var float $subtotal @var ?array $coupon @var float $discount */ ?>
 <section class="page-head">
     <div class="container">
         <nav aria-label="breadcrumb" class="small">
@@ -77,14 +77,36 @@
             </div>
 
             <div class="col-lg-4">
+                <div class="summary-card mb-3">
+                    <h5 class="summary-title">Have a coupon?</h5>
+                    <?php if ($coupon): ?>
+                        <div class="d-flex align-items-center justify-content-between border rounded px-3 py-2">
+                            <span class="badge bg-success text-uppercase"><?= e($coupon['code']) ?></span>
+                            <form method="post" action="<?= url('/cart/coupon/remove') ?>" class="m-0">
+                                <?= csrf_field() ?>
+                                <button class="btn btn-sm btn-link text-danger p-0"><i class="fas fa-xmark"></i> Remove</button>
+                            </form>
+                        </div>
+                    <?php else: ?>
+                        <form method="post" action="<?= url('/cart/coupon') ?>" class="d-flex gap-2">
+                            <?= csrf_field() ?>
+                            <input type="text" name="coupon_code" class="form-control form-control-sm" placeholder="Coupon code" maxlength="60">
+                            <button class="btn btn-outline-primary btn-sm text-nowrap">Apply</button>
+                        </form>
+                    <?php endif; ?>
+                </div>
+
                 <div class="summary-card">
                     <h5 class="summary-title">Order Summary</h5>
                     <div class="summary-row"><span>Subtotal</span><span><?= money($subtotal) ?></span></div>
+                    <?php if ($discount > 0): ?>
+                        <div class="summary-row text-success"><span>Coupon <?= e($coupon['code']) ?></span><span>− <?= money($discount) ?></span></div>
+                    <?php endif; ?>
                     <?php $threshold = (float) setting('free_shipping_threshold', 0); ?>
                     <?php $shipping = ($threshold > 0 && $subtotal >= $threshold) ? 0.0 : (float) setting('shipping_fee', 0); ?>
                     <div class="summary-row"><span>Shipping</span><span><?= $shipping == 0 ? 'Free' : money($shipping) ?></span></div>
                     <hr>
-                    <div class="summary-row summary-total"><span>Total</span><span><?= money($subtotal + $shipping) ?></span></div>
+                    <div class="summary-row summary-total"><span>Total</span><span><?= money($subtotal - $discount + $shipping) ?></span></div>
                     <a href="<?= url('/checkout') ?>" class="btn btn-primary btn-lg w-100 mt-2">Proceed to Checkout</a>
                 </div>
             </div>

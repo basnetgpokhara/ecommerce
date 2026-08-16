@@ -35,7 +35,7 @@ $statusBadge = ['active'=>'bg-success','pending'=>'bg-warning text-dark','suspen
         <table class="table table-hover tbl-compact align-middle">
             <thead><tr><th>Shop</th><th>Owner</th><th>Commission</th><th>Products</th><th>Earnings</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
             <tbody>
-            <?php foreach ($sellers as $s): ?>
+            <?php foreach ($sellers['items'] as $s): ?>
                 <tr>
                     <td class="fw-semibold"><?= e($s['shop_name']) ?><div class="small text-muted"><a href="<?= url('/shop/'.$s['slug']) ?>" target="_blank">view shop</a></div></td>
                     <td class="small"><?= e($s['owner_name']) ?><div class="small text-muted"><?= e($s['email']) ?></div></td>
@@ -53,8 +53,9 @@ $statusBadge = ['active'=>'bg-success','pending'=>'bg-warning text-dark','suspen
                     </td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$sellers): ?><tr><td colspan="7" class="text-center text-muted py-4">No sellers yet.</td></tr><?php endif; ?>
+            <?php if (!$sellers['items']): ?><tr><td colspan="7" class="text-center text-muted py-4">No sellers yet.</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>
+    <?php \App\Core\View::partial('pagination', ['listing' => $sellers, 'base' => '/admin/sellers']); ?>
 </div></div>

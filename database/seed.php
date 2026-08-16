@@ -50,9 +50,12 @@ foreach ([
     'approval_mode'           => 'auto',   // auto | pending (configurable)
     'default_commission_rate' => '10.00',  // per-seller commission
     'cod_enabled'             => '1',
-    'esewa_enabled'           => '0',      // Phase 3
-    'khalti_enabled'          => '0',      // Phase 3
-    'fonepay_enabled'         => '0',      // Phase 3
+    'esewa_enabled'           => '0',
+    'khalti_enabled'          => '0',
+    'fonepay_enabled'         => '0',
+    'esewa_environment'       => 'test',
+    'khalti_environment'      => 'test',
+    'fonepay_environment'     => 'test',
     'free_shipping_threshold' => '2000',
     'shipping_fee'            => '150',
     'review_auto_approve'     => '1',
@@ -83,6 +86,22 @@ foreach ($banners as $b) {
         'link' => $b[3], 'button_text' => $b[4], 'position' => $b[5],
         'sort_order' => $b[6], 'status' => 'active',
     ]);
+}
+
+// ---------------------------------------------------------------- coupons (Phase 3)
+$out('→ coupons');
+$coupons = [
+    ['WELCOME10', 'percentage', 10.00, 1000.00, null, null],
+    ['SAVE200',   'flat',       200.00, 1500.00, null, 500],
+];
+foreach ($coupons as $c) {
+    if (!Database::fetch('SELECT id FROM coupons WHERE code = ?', [$c[0]])) {
+        Database::insert('coupons', [
+            'code' => $c[0], 'type' => $c[1], 'value' => $c[2],
+            'min_order' => $c[3], 'expiry' => $c[4], 'usage_limit' => $c[5],
+            'used' => 0, 'status' => 'active',
+        ]);
+    }
 }
 
 // ---------------------------------------------------------------- users

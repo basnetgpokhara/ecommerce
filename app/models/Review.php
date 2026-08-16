@@ -81,14 +81,27 @@ class Review extends \App\Core\Model
             $params[] = $f['status'];
         }
         $whereSql = $where ? 'WHERE ' . implode(' AND ', $where) : '';
-        return Database::fetchAll(
+
+        $perPage = max(1, min(100, (int) ($f['per_page'] ?? 25)));
+        $page    = max(1, (int) ($f['page'] ?? 1));
+        $offset  = ($page - 1) * $perPage;
+        $total   = (int) (Database::scalar(
+            "SELECT COUNT(*) FROM reviews r JOIN products p ON p.id = r.product_id JOIN users u ON u.id = r.customer_id $whereSql",
+            $params
+        ) ?? 0);
+
+        $rows = Database::fetchAll(
             "SELECT r.*, p.name AS product_name, u.name AS customer_name
              FROM reviews r
              JOIN products p ON p.id = r.product_id
              JOIN users u ON u.id = r.customer_id
-             $whereSql ORDER BY r.id DESC",
+             $whereSql ORDER BY r.id DESC LIMIT $perPage OFFSET $offset",
             $params
         );
+        return [
+            'items' => $rows, 'total' => $total, 'page' => $page,
+            'per_page' => $perPage, 'last_page' => (int) max(1, ceil($total / $perPage)),
+        ];
     }
 
     public static function setStatus(int $id, string $status): void

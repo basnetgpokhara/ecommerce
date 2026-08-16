@@ -3,9 +3,12 @@ namespace App\Controllers;
 
 use App\Core\Auth;
 use App\Core\Database;
+use App\Core\Gateway;
+use App\Core\Session;
 use App\Models\Address;
 use App\Models\AuditLog;
 use App\Models\Cart;
+use App\Models\Coupon;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
@@ -34,16 +37,19 @@ class CheckoutController extends \App\Core\Controller
         }
         $addresses       = Address::forUser($this->uid());
         $subtotal        = Cart::subtotal($this->uid());
+        $discount        = $this->appliedCouponDiscount($subtotal);
         $shippingFee     = $this->shippingFee($subtotal);
-        $total           = $subtotal + $shippingFee;
+        $total           = round($subtotal - $discount + $shippingFee, 2);
+        $coupon          = $this->appliedCoupon();
         $paymentMethods  = $this->enabledPaymentMethods();
 
         $this->view('checkout/index', compact(
-            'items', 'addresses', 'subtotal', 'shippingFee', 'total', 'paymentMethods'
+            'items', 'addresses', 'subtotal', 'discount', 'coupon',
+            'shippingFee', 'total', 'paymentMethods'
         ));
     }
 
-    /** Place the order (COD in Phase 1; gateways are stubbed for Phase 3). */
+    /** Place the order. COD is finalised here; online gateways hand off to /checkout/pay. */
     public function place(): void
     {
         $userId = $this->uid();
@@ -81,14 +87,13 @@ class CheckoutController extends \App\Core\Controller
         if (!in_array($method, $allowed, true)) {
             $this->error('Please choose a valid payment method.', '/checkout');
         }
-        if ($method !== 'cod') {
-            $this->error('Online payment gateways are enabled in Phase 3. Please choose Cash on Delivery.', '/checkout');
-        }
 
-        // ---- Totals ----
+        // ---- Totals (with any applied coupon) ----
         $subtotal    = Cart::subtotal($userId);
+        $coupon      = $this->appliedCoupon();
+        $discount    = $coupon ? $this->couponDiscount($coupon, $subtotal) : 0.0;
         $shippingFee = $this->shippingFee($subtotal);
-        $total       = $subtotal + $shippingFee;
+        $total       = round($subtotal - $discount + $shippingFee, 2);
         $orderNumber = Order::generateNumber();
 
         // ---- Persist order transactionally ----
@@ -105,12 +110,13 @@ class CheckoutController extends \App\Core\Controller
                 'shipping_district' => $address['district'] ?? null,
                 'subtotal'          => $subtotal,
                 'shipping_fee'      => $shippingFee,
-                'discount'          => 0,
+                'discount'          => $discount,
                 'tax'               => 0,
                 'total'             => $total,
                 'status'            => 'placed',
                 'payment_method'    => $method,
                 'payment_status'    => 'pending',
+                'coupon_code'       => $coupon ? $coupon['code'] : null,
                 'notes'             => $this->request->input('notes'),
             ]);
 
@@ -158,8 +164,49 @@ class CheckoutController extends \App\Core\Controller
         }
 
         Cart::clear($userId);
+        if ($coupon) {
+            Coupon::incrementUsage((int) $coupon['id']);
+        }
+        Session::forget('coupon_code');
         AuditLog::record($userId, 'order.placed', "Order {$orderNumber} placed");
-        redirect('/checkout/success/' . $orderId);
+
+        if ($method === 'cod') {
+            redirect('/checkout/success/' . $orderId);
+        }
+        // Online gateway: send the customer to the payment initiation page.
+        redirect('/checkout/pay/' . $orderId);
+    }
+
+    /** Send the customer to the selected online gateway to pay. */
+    public function pay(int $id): void
+    {
+        $order = Order::findOwned($id, $this->uid());
+        if (!$order) {
+            $this->abort(404);
+        }
+        $gateway = Gateway::make((string) $order['payment_method']);
+        if (!$gateway || !$gateway->isEnabled()) {
+            $this->error('That payment gateway is no longer available.', '/checkout');
+        }
+        if ($order['payment_status'] === 'paid') {
+            redirect('/checkout/success/' . $id);
+        }
+        $payload = $gateway->initiate($order);
+        if (!empty($payload['error'])) {
+            $this->error($payload['error'], '/checkout');
+        }
+        $this->view('checkout/gateway', compact('order', 'gateway', 'payload'), 'minimal');
+    }
+
+    /** Payment failed / cancelled page. */
+    public function failure(int $id): void
+    {
+        $order = Order::findOwned($id, $this->uid());
+        if (!$order) {
+            $this->abort(404);
+        }
+        $payments = Payment::forOrder($order['id']);
+        $this->view('checkout/failure', compact('order', 'payments'));
     }
 
     /** Order confirmation page. */
@@ -186,6 +233,28 @@ class CheckoutController extends \App\Core\Controller
     }
 
     // ------------------------------------------------------------------
+    /** Coupon currently applied in the session, or null if invalid for $subtotal. */
+    private function appliedCoupon(): ?array
+    {
+        $code = (string) Session::get('coupon_code', '');
+        if ($code === '') {
+            return null;
+        }
+        $coupon = Coupon::findByCode($code);
+        return $coupon ?: null;
+    }
+
+    private function couponDiscount(array $coupon, float $subtotal): float
+    {
+        return Coupon::isValid($coupon, $subtotal) ? Coupon::discountFor($coupon, $subtotal) : 0.0;
+    }
+
+    private function appliedCouponDiscount(float $subtotal): float
+    {
+        $coupon = $this->appliedCoupon();
+        return $coupon ? $this->couponDiscount($coupon, $subtotal) : 0.0;
+    }
+
     private function shippingFee(float $subtotal): float
     {
         $threshold = (float) setting('free_shipping_threshold', 0);
@@ -202,14 +271,8 @@ class CheckoutController extends \App\Core\Controller
         if (setting('cod_enabled', '1') !== '0') {
             $methods['cod'] = 'Cash on Delivery';
         }
-        if (setting('esewa_enabled', '0') === '1') {
-            $methods['esewa'] = 'eSewa';
-        }
-        if (setting('khalti_enabled', '0') === '1') {
-            $methods['khalti'] = 'Khalti';
-        }
-        if (setting('fonepay_enabled', '0') === '1') {
-            $methods['fonepay'] = 'Fonepay';
+        foreach (Gateway::enabled() as $code => $gateway) {
+            $methods[$code] = $gateway->label();
         }
         if (!$methods) {
             $methods['cod'] = 'Cash on Delivery';

@@ -40,4 +40,10 @@ class Coupon extends \App\Core\Model
         }
         return round($cartSubtotal * ((float) $c['value'] / 100), 2);
     }
+
+    /** Mark one use of a coupon (called when an order using it is placed). */
+    public static function incrementUsage(int $id): void
+    {
+        Database::query('UPDATE coupons SET used = used + 1 WHERE id = ?', [$id]);
+    }
 }

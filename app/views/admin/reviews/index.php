@@ -15,7 +15,7 @@
         <table class="table table-hover tbl-compact align-middle">
             <thead><tr><th>Product</th><th>Customer</th><th>Rating</th><th>Comment</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
             <tbody>
-            <?php foreach ($reviews as $r): ?>
+            <?php foreach ($reviews['items'] as $r): ?>
                 <tr>
                     <td class="small"><?= e($r['product_name']) ?></td>
                     <td class="small"><?= e($r['customer_name']) ?></td>
@@ -28,8 +28,9 @@
                     </td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$reviews): ?><tr><td colspan="6" class="text-center text-muted py-4">No reviews.</td></tr><?php endif; ?>
+            <?php if (!$reviews['items']): ?><tr><td colspan="6" class="text-center text-muted py-4">No reviews.</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>
+    <?php \App\Core\View::partial('pagination', ['listing' => $reviews, 'base' => '/admin/reviews']); ?>
 </div></div>

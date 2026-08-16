@@ -5,7 +5,7 @@ $roleBadge = ['customer'=>'bg-info text-dark','seller'=>'bg-success','admin'=>'b
 ?>
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h4 class="fw-bold mb-0">Users</h4>
-    <span class="text-muted small"><?= count($users) ?> found</span>
+    <span class="text-muted small"><?= (int)$users['total'] ?> found</span>
 </div>
 
 <form method="get" class="admin-toolbar">
@@ -25,7 +25,7 @@ $roleBadge = ['customer'=>'bg-info text-dark','seller'=>'bg-success','admin'=>'b
         <table class="table table-hover tbl-compact align-middle">
             <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Status</th><th>Joined</th><th class="text-end">Actions</th></tr></thead>
             <tbody>
-            <?php foreach ($users as $u): ?>
+            <?php foreach ($users['items'] as $u): ?>
                 <tr>
                     <td class="fw-semibold"><?= e($u['name']) ?></td>
                     <td class="small"><?= e($u['email']) ?></td>
@@ -51,8 +51,9 @@ $roleBadge = ['customer'=>'bg-info text-dark','seller'=>'bg-success','admin'=>'b
                     </td>
                 </tr>
             <?php endforeach; ?>
-            <?php if (!$users): ?><tr><td colspan="7" class="text-center text-muted py-4">No users found.</td></tr><?php endif; ?>
+            <?php if (!$users['items']): ?><tr><td colspan="7" class="text-center text-muted py-4">No users found.</td></tr><?php endif; ?>
             </tbody>
         </table>
     </div>
+    <?php \App\Core\View::partial('pagination', ['listing' => $users, 'base' => '/admin/users']); ?>
 </div></div>

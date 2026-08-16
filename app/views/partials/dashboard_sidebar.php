@@ -50,12 +50,14 @@ $active = function (string $seg) use ($path): string {
     <?php elseif ($role === 'admin'): ?>
         <li class="dash-nav-head">Administration</li>
         <li><a href="<?= url('/admin') ?>" class="<?= $path === '/admin' ? 'active' : '' ?>"><i class="fas fa-gauge"></i> Dashboard</a></li>
+        <li><a href="<?= url('/admin/analytics') ?>" class="<?= $active('/admin/analytics') ?>"><i class="fas fa-chart-line"></i> Analytics</a></li>
         <li><a href="<?= url('/admin/users') ?>" class="<?= $active('/admin/users') ?>"><i class="fas fa-users"></i> Users</a></li>
         <li><a href="<?= url('/admin/sellers') ?>" class="<?= $active('/admin/sellers') ?>"><i class="fas fa-store"></i> Sellers</a></li>
         <li><a href="<?= url('/admin/products') ?>" class="<?= $active('/admin/products') ?>"><i class="fas fa-tags"></i> Products</a></li>
         <li><a href="<?= url('/admin/categories') ?>" class="<?= $active('/admin/categories') ?>"><i class="fas fa-folder-tree"></i> Categories</a></li>
         <li><a href="<?= url('/admin/orders') ?>" class="<?= $active('/admin/orders') ?>"><i class="fas fa-clipboard-list"></i> Orders</a></li>
         <li><a href="<?= url('/admin/reviews') ?>" class="<?= $active('/admin/reviews') ?>"><i class="fas fa-star-half-stroke"></i> Reviews</a></li>
+        <li><a href="<?= url('/admin/coupons') ?>" class="<?= $active('/admin/coupons') ?>"><i class="fas fa-ticket"></i> Coupons</a></li>
         <li><a href="<?= url('/admin/banners') ?>" class="<?= $active('/admin/banners') ?>"><i class="fas fa-image"></i> Banners</a></li>
         <li><a href="<?= url('/admin/pages') ?>" class="<?= $active('/admin/pages') ?>"><i class="fas fa-file-lines"></i> Pages</a></li>
         <li><a href="<?= url('/admin/settings') ?>" class="<?= $active('/admin/settings') ?>"><i class="fas fa-gear"></i> Settings</a></li>

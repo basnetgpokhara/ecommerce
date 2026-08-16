@@ -232,6 +232,8 @@ CREATE TABLE orders (
     UNIQUE KEY uq_orders_number (order_number),
     KEY ix_orders_customer (customer_id),
     KEY ix_orders_status (status),
+    KEY ix_orders_created (created_at),
+    KEY ix_orders_payment (payment_method),
     CONSTRAINT fk_orders_customer FOREIGN KEY (customer_id) REFERENCES users(id)
         ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -257,6 +259,7 @@ CREATE TABLE order_items (
     PRIMARY KEY (id),
     KEY ix_oitems_order (order_id),
     KEY ix_oitems_seller (seller_id),
+    KEY ix_oitems_product (product_id),
     CONSTRAINT fk_oitems_order FOREIGN KEY (order_id) REFERENCES orders(id)
         ON DELETE CASCADE,
     CONSTRAINT fk_oitems_product FOREIGN KEY (product_id) REFERENCES products(id)
@@ -279,6 +282,7 @@ CREATE TABLE payments (
     created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     KEY ix_payments_order (order_id),
+    KEY ix_payments_status (status),
     CONSTRAINT fk_payments_order FOREIGN KEY (order_id) REFERENCES orders(id)
         ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -297,6 +301,7 @@ CREATE TABLE reviews (
     PRIMARY KEY (id),
     UNIQUE KEY uq_review_product_customer (product_id, customer_id),
     KEY ix_reviews_product (product_id),
+    KEY ix_reviews_status (status),
     CONSTRAINT fk_reviews_product  FOREIGN KEY (product_id)  REFERENCES products(id)  ON DELETE CASCADE,
     CONSTRAINT fk_reviews_customer FOREIGN KEY (customer_id) REFERENCES users(id)     ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -403,6 +408,9 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('esewa_enabled','0'),
 ('khalti_enabled','0'),
 ('fonepay_enabled','0'),
+('esewa_environment','test'),
+('khalti_environment','test'),
+('fonepay_environment','test'),
 ('free_shipping_threshold','2000'),
 ('shipping_fee','150'),
 ('review_auto_approve','1');
@@ -469,6 +477,11 @@ INSERT INTO banners (title,subtitle,image,link,button_text,position,sort_order,s
 ('Big Sale, Local Shops','Up to 40% off electronics, fashion & more','assets/img/hero1.svg','/search?sort=newest','Shop Now','hero',0,'active'),
 ('Fresh from Nepal','Groceries & home essentials, delivered fast','assets/img/hero2.svg','/category/grocery','Shop Groceries','hero',1,'active'),
 ('Free shipping over रू 2,000','Pay with eSewa, Khalti, Fonepay or COD',NULL,'/shops','Explore Shops','promo',0,'active');
+
+-- ---- Coupons (Phase 3 demo codes) ----
+INSERT INTO coupons (code,type,value,min_order,expiry,usage_limit,used,status) VALUES
+('WELCOME10','percentage',10.00,1000.00,NULL,NULL,0,'active'),
+('SAVE200','flat',200.00,1500.00,NULL,500,0,'active');
 
 -- ---- CMS pages ----
 INSERT INTO pages (title,slug,body,status) VALUES

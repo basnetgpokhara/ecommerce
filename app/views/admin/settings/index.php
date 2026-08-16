@@ -40,7 +40,7 @@
     </div></div>
 
     <div class="card mb-3"><div class="card-body">
-        <h6 class="mb-3">Payment gateways <small class="text-muted">(eSewa / Khalti / Fonepay integrate fully in Phase 3)</small></h6>
+        <h6 class="mb-3">Payment gateways <small class="text-muted">(server-to-server verification — enable &amp; enter live/test credentials to go live)</small></h6>
 
         <div class="border rounded p-3 mb-3">
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="cod_enabled" value="1" id="cod" <?= setting('cod_enabled','1')==='1'?'checked':'' ?>><label class="form-check-label fw-bold" for="cod">Cash on Delivery (COD)</label></div>
@@ -67,8 +67,9 @@
         <div class="border rounded p-3">
             <div class="form-check mb-2"><input class="form-check-input" type="checkbox" name="fonepay_enabled" value="1" id="fonepay" <?= setting('fonepay_enabled','0')==='1'?'checked':'' ?>><label class="form-check-label fw-bold" for="fonepay">Fonepay</label></div>
             <div class="row g-2">
-                <div class="col-md-6"><div class="form-outline"><input type="text" name="fonepay_merchant_code" class="form-control" value="<?= e(setting('fonepay_merchant_code','')) ?>"><label class="form-label">Merchant code</label></div></div>
+                <div class="col-md-4"><div class="form-outline"><input type="text" name="fonepay_merchant_code" class="form-control" value="<?= e(setting('fonepay_merchant_code','')) ?>"><label class="form-label">Merchant code</label></div></div>
                 <div class="col-md-6"><div class="form-outline"><input type="text" name="fonepay_secret" class="form-control" value="<?= e(setting('fonepay_secret','')) ?>"><label class="form-label">Secret</label></div></div>
+                <div class="col-md-2"><select name="fonepay_environment" class="form-select"><option value="test" <?= setting('fonepay_environment','test')==='test'?'selected':'' ?>>Test</option><option value="live" <?= setting('fonepay_environment','test')==='live'?'selected':'' ?>>Live</option></select><label class="form-label d-block">Env</label></div>
             </div>
         </div>
         <small class="text-muted d-block mt-2">Secrets are stored in the <code>settings</code> table — keep your database &amp; <code>.env</code> secure.</small>

@@ -1,4 +1,4 @@
-<?php /** @var array $items @var array $addresses @var float $subtotal @var float $shippingFee @var float $total @var array $paymentMethods */ ?>
+<?php /** @var array $items @var array $addresses @var float $subtotal @var float $discount @var ?array $coupon @var float $shippingFee @var float $total @var array $paymentMethods */ ?>
 <section class="page-head">
     <div class="container">
         <nav aria-label="breadcrumb" class="small">
@@ -63,19 +63,15 @@
                         <h5 class="mb-3"><i class="fas fa-wallet me-2 text-primary"></i>Payment Method</h5>
                         <?php foreach ($paymentMethods as $code => $label): ?>
                             <label class="address-option selected">
-                                <input type="radio" name="payment_method" value="<?= e($code) ?>" class="address-radio" checked>
+                                <input type="radio" name="payment_method" value="<?= e($code) ?>" class="address-radio" <?= $code === 'cod' ? 'checked' : '' ?>>
                                 <div>
                                     <strong><?= e($label) ?></strong><br>
                                     <span class="small text-muted">
-                                        <?= $code === 'cod' ? 'Pay with cash when your order is delivered.' : 'Online payment (verify before confirming).' ?>
+                                        <?= $code === 'cod' ? 'Pay with cash when your order is delivered.' : 'You\'ll be taken to a secure page to complete this payment.' ?>
                                     </span>
                                 </div>
                             </label>
                         <?php endforeach; ?>
-                        <div class="alert alert-info small mt-3 mb-0">
-                            <i class="fas fa-circle-info me-1"></i>
-                            eSewa, Khalti &amp; Fonepay gateways are wired in Phase 3. Phase 1 supports Cash on Delivery.
-                        </div>
 
                         <div class="form-outline mt-3">
                             <textarea name="notes" class="form-control" rows="2" placeholder="Optional order notes (optional)"></textarea>
@@ -102,6 +98,12 @@
                     </div>
                     <hr>
                     <div class="summary-row"><span>Subtotal</span><span><?= money($subtotal) ?></span></div>
+                    <?php if ($coupon && $discount > 0): ?>
+                        <div class="summary-row text-success">
+                            <span>Coupon <?= e($coupon['code']) ?></span>
+                            <span>− <?= money($discount) ?></span>
+                        </div>
+                    <?php endif; ?>
                     <div class="summary-row"><span>Shipping</span><span><?= $shippingFee == 0 ? 'Free' : money($shippingFee) ?></span></div>
                     <div class="summary-row summary-total"><span>Total</span><span><?= money($total) ?></span></div>
                     <button type="submit" class="btn btn-success btn-lg w-100 mt-3">
