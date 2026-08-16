@@ -1,0 +1,8 @@
+# Route everything at the domain root into /public (Apache)
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^$ public/ [L]
+    RewriteRule (.*) public/$1 [L]
+</IfModule>
+
+Options -Indexes

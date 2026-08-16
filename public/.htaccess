@@ -1,0 +1,18 @@
+# Front-controller rewrite (Apache). All non-file requests go to index.php
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Never rewrite real files/directories (static assets, uploads)
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+
+    RewriteRule ^ index.php [L]
+</IfModule>
+
+# Security: deny dotfiles
+<FilesMatch "^\.(env|git|htaccess)">
+    Require all denied
+</FilesMatch>
+
+Options -Indexes
