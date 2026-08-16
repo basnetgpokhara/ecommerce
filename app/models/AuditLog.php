@@ -21,4 +21,13 @@ class AuditLog extends \App\Core\Model
             // Audit logging must never break the request.
         }
     }
+
+    public static function recent(int $limit = 200): array
+    {
+        return Database::fetchAll(
+            "SELECT a.*, u.name AS user_name
+             FROM audit_logs a LEFT JOIN users u ON u.id = a.user_id
+             ORDER BY a.id DESC LIMIT " . max(1, (int) $limit)
+        );
+    }
 }

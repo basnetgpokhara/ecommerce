@@ -37,4 +37,42 @@ class Seller extends \App\Core\Model
             [$sellerId]
         );
     }
+
+    /** Sellers awaiting admin approval. */
+    public static function pending(): array
+    {
+        return Database::fetchAll(
+            "SELECT s.*, u.name AS owner_name, u.email, u.phone
+             FROM sellers s JOIN users u ON u.id = s.user_id
+             WHERE s.status = 'pending' ORDER BY s.id DESC"
+        );
+    }
+
+    /** All sellers with product counts + earnings, for the admin. */
+    public static function allWithStats(): array
+    {
+        return Database::fetchAll(
+            "SELECT s.*, u.name AS owner_name, u.email,
+                    (SELECT COUNT(*) FROM products p WHERE p.seller_id = s.id AND p.deleted_at IS NULL) AS product_count,
+                    (SELECT COALESCE(SUM(oi.seller_earnings), 0) FROM order_items oi
+                       JOIN orders o ON o.id = oi.order_id
+                       WHERE oi.seller_id = s.id AND o.status <> 'cancelled') AS earnings
+             FROM sellers s JOIN users u ON u.id = s.user_id
+             ORDER BY s.id DESC"
+        );
+    }
+
+    public static function findWithUser(int $id): ?array
+    {
+        return Database::fetch(
+            "SELECT s.*, u.email, u.name AS owner_name
+             FROM sellers s JOIN users u ON u.id = s.user_id WHERE s.id = ?",
+            [$id]
+        );
+    }
+
+    public static function setStatus(int $id, string $status): void
+    {
+        Database::query('UPDATE sellers SET status = ? WHERE id = ?', [$status, $id]);
+    }
 }

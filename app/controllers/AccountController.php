@@ -164,4 +164,17 @@ class AccountController extends \App\Core\Controller
         Address::deleteById($id);
         $this->success('Address deleted.', '/account/addresses');
     }
+
+    /** Delete the customer's own review. */
+    public function destroyReview(int $id): void
+    {
+        $review = \App\Models\Review::findOwned($id, $this->uid());
+        if (!$review) {
+            $this->abort(404);
+        }
+        \App\Core\Database::delete('reviews', ['id' => $id]);
+        \App\Models\Review::recalcProduct((int) $review['product_id']);
+        \App\Models\AuditLog::record($this->uid(), 'review.delete', "Review #{$id}");
+        $this->success('Review deleted.', '/account');
+    }
 }

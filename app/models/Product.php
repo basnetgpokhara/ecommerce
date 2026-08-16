@@ -196,4 +196,88 @@ class Product extends \App\Core\Model
             "SELECT DISTINCT brand FROM products WHERE brand IS NOT NULL AND brand <> '' AND status='approved' ORDER BY brand"
         );
     }
+
+    /** Generate a unique slug for a new product. */
+    public static function uniqueSlug(string $name): string
+    {
+        $base = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $name), '-')) ?: 'product';
+        $slug = $base;
+        $i = 1;
+        while (self::findBySlug($slug)) {
+            $slug = $base . '-' . (++$i);
+        }
+        return $slug;
+    }
+
+    /** Find a product only if it belongs to the given seller. */
+    public static function findForSeller(int $id, int $sellerId): ?array
+    {
+        return Database::fetch(
+            'SELECT * FROM products WHERE id = ? AND seller_id = ? AND deleted_at IS NULL LIMIT 1',
+            [$id, $sellerId]
+        );
+    }
+
+    /** Seller's own products (with category name), optional search. */
+    public static function forSeller(int $sellerId, ?string $q = null): array
+    {
+        $sql = "SELECT p.*, c.name AS category_name
+                FROM products p LEFT JOIN categories c ON c.id = p.category_id
+                WHERE p.seller_id = ? AND p.deleted_at IS NULL";
+        $params = [$sellerId];
+        if ($q !== null && $q !== '') {
+            $sql .= " AND (p.name LIKE ? OR p.sku LIKE ?)";
+            $params[] = '%' . $q . '%';
+            $params[] = '%' . $q . '%';
+        }
+        $sql .= " ORDER BY p.id DESC";
+        return Database::fetchAll($sql, $params);
+    }
+
+    /** Admin: all products with seller + category, filtered & paginated. */
+    public static function adminListing(array $f): array
+    {
+        $where = ["p.deleted_at IS NULL"];
+        $params = [];
+        if (!empty($f['q'])) {
+            $where[] = '(p.name LIKE ? OR p.sku LIKE ? OR s.shop_name LIKE ?)';
+            $like = '%' . $f['q'] . '%';
+            array_push($params, $like, $like, $like);
+        }
+        if (!empty($f['status'])) {
+            $where[] = 'p.status = ?';
+            $params[] = $f['status'];
+        }
+        if (!empty($f['seller_id'])) {
+            $where[] = 'p.seller_id = ?';
+            $params[] = (int) $f['seller_id'];
+        }
+        $whereSql = implode(' AND ', $where);
+        $perPage = max(1, min(100, (int) ($f['per_page'] ?? 15)));
+        $page = max(1, (int) ($f['page'] ?? 1));
+        $offset = ($page - 1) * $perPage;
+
+        $total = (int) (Database::scalar(
+            "SELECT COUNT(*) FROM products p LEFT JOIN sellers s ON s.id = p.seller_id WHERE $whereSql",
+            $params
+        ) ?? 0);
+        $rows = Database::fetchAll(
+            "SELECT p.*, s.shop_name, c.name AS category_name
+             FROM products p
+             LEFT JOIN sellers s ON s.id = p.seller_id
+             LEFT JOIN categories c ON c.id = p.category_id
+             WHERE $whereSql ORDER BY p.id DESC LIMIT $perPage OFFSET $offset",
+            $params
+        );
+        return [
+            'items' => $rows, 'total' => $total, 'page' => $page,
+            'per_page' => $perPage, 'last_page' => (int) max(1, ceil($total / $perPage)),
+        ];
+    }
+
+    /** Soft delete (keeps historical order_items valid via SET NULL FK). */
+    public static function softDelete(int $id): void
+    {
+        Database::query('UPDATE products SET deleted_at = NOW(), status = ? WHERE id = ?', ['inactive', $id]);
+    }
 }

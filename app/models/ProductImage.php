@@ -24,4 +24,18 @@ class ProductImage extends \App\Core\Model
         );
         return $row ? $row['image_path'] : null;
     }
+
+    /** Mark a single image as primary (and all others for the product as not). */
+    public static function setPrimary(int $productId, int $imageId): void
+    {
+        Database::query(
+            'UPDATE product_images SET is_primary = (id = ?) WHERE product_id = ?',
+            [$imageId, $productId]
+        );
+    }
+
+    public static function remove(int $imageId): void
+    {
+        Database::delete('product_images', ['id' => $imageId]);
+    }
 }

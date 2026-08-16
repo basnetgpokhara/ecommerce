@@ -55,6 +55,7 @@ foreach ([
     'fonepay_enabled'         => '0',      // Phase 3
     'free_shipping_threshold' => '2000',
     'shipping_fee'            => '150',
+    'review_auto_approve'     => '1',
 ] as $k => $v) {
     settings_set($k, $v);
 }

@@ -154,6 +154,29 @@ $rcount  = (int) $product['rating_count'];
                     <?php else: ?>
                         <p class="text-muted">No reviews yet.</p>
                     <?php endif; ?>
+
+                    <hr class="my-3">
+                    <h6 class="mb-2">Write a review</h6>
+                    <?php if (auth()->check() && auth()->is('customer')): ?>
+                        <form method="post" action="<?= url('/product/' . $product['slug'] . '/review') ?>" class="review-form">
+                            <?= csrf_field() ?>
+                            <div class="star-input mb-2">
+                                <?php for ($s = 5; $s >= 1; $s--): ?>
+                                    <input type="radio" name="rating" id="r<?= $s ?>" value="<?= $s ?>" <?= (old('rating') === (string) $s) ? 'checked' : '' ?> required>
+                                    <label for="r<?= $s ?>"><i class="fas fa-star"></i></label>
+                                <?php endfor; ?>
+                            </div>
+                            <div class="form-outline mb-2">
+                                <textarea name="comment" class="form-control" rows="2" placeholder="Share your experience…"><?= e(old('comment')) ?></textarea>
+                                <label class="form-label">Your review (optional comment)</label>
+                            </div>
+                            <button class="btn btn-primary btn-sm">Submit Review</button>
+                        </form>
+                    <?php elseif (!auth()->check()): ?>
+                        <p class="text-muted small mb-0"><a href="<?= url('/login') ?>">Log in</a> to write a review.</p>
+                    <?php else: ?>
+                        <p class="text-muted small mb-0">Only customer accounts can write reviews.</p>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

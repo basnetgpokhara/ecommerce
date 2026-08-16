@@ -4,6 +4,21 @@
     <p class="text-muted mb-0">Marketplace overview across all sellers and customers.</p>
 </div>
 
+<?php if (!empty($pendingSellers) || !empty($pendingApprovals)): ?>
+<div class="row g-2 mb-4">
+    <?php if (!empty($pendingSellers)): ?>
+        <div class="col-md-6"><a href="<?= url('/admin/sellers') ?>" class="card text-decoration-none text-dark"><div class="card-body d-flex align-items-center gap-3">
+            <i class="fas fa-store fa-2x text-warning"></i><div><div class="fw-bold"><?= (int)$pendingSellers ?> seller(s) awaiting approval</div><div class="small text-muted">Review applications →</div></div>
+        </div></a></div>
+    <?php endif; ?>
+    <?php if (!empty($pendingApprovals)): ?>
+        <div class="col-md-6"><a href="<?= url('/admin/products?status=pending') ?>" class="card text-decoration-none text-dark"><div class="card-body d-flex align-items-center gap-3">
+            <i class="fas fa-tags fa-2x text-warning"></i><div><div class="fw-bold"><?= (int)$pendingApprovals ?> product(s) pending review</div><div class="small text-muted">Approve or reject →</div></div>
+        </div></a></div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
+
 <div class="row g-3 mb-4">
     <div class="col-6 col-md-3"><div class="kpi-card kpi-green"><div class="kpi-value"><?= money($kpis['sales']) ?></div><div class="kpi-label">Gross Sales</div></div></div>
     <div class="col-6 col-md-3"><div class="kpi-card kpi-blue"><div class="kpi-value"><?= (int)$kpis['orders'] ?></div><div class="kpi-label">Orders</div></div></div>

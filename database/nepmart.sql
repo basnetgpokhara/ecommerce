@@ -404,7 +404,8 @@ INSERT INTO settings (setting_key, setting_value) VALUES
 ('khalti_enabled','0'),
 ('fonepay_enabled','0'),
 ('free_shipping_threshold','2000'),
-('shipping_fee','150');
+('shipping_fee','150'),
+('review_auto_approve','1');
 
 -- ---- Users (passwords are bcrypt-hashed, never plain text) ----
 INSERT INTO users (id,name,email,phone,password_hash,role,status) VALUES

@@ -57,5 +57,75 @@ Router::delete('/account/addresses/{id}',[App\Controllers\AccountController::cla
 // ---- Seller dashboard (role: seller) ----
 Router::get('/seller', [App\Controllers\SellerController::class, 'dashboard']);
 
+Router::get('/seller/products',          [App\Controllers\SellerController::class, 'products']);
+Router::get('/seller/products/create',   [App\Controllers\SellerController::class, 'createProduct']);
+Router::post('/seller/products',         [App\Controllers\SellerController::class, 'storeProduct']);
+Router::get('/seller/products/{id}/edit',[App\Controllers\SellerController::class, 'editProduct']);
+Router::post('/seller/products/{id}',    [App\Controllers\SellerController::class, 'updateProduct']);
+Router::post('/seller/products/{id}/delete', [App\Controllers\SellerController::class, 'deleteProduct']);
+
+Router::get('/seller/orders',            [App\Controllers\SellerController::class, 'orders']);
+Router::get('/seller/orders/{id}',       [App\Controllers\SellerController::class, 'order']);
+Router::post('/seller/orders/{id}/fulfill', [App\Controllers\SellerController::class, 'fulfillOrder']);
+
+Router::get('/seller/shop',              [App\Controllers\SellerController::class, 'editShop']);
+Router::post('/seller/shop',             [App\Controllers\SellerController::class, 'updateShop']);
+
+Router::get('/seller/reviews',           [App\Controllers\SellerController::class, 'reviews']);
+
 // ---- Admin dashboard (role: admin) ----
 Router::get('/admin', [App\Controllers\AdminController::class, 'dashboard']);
+
+// Users
+Router::get('/admin/users',                  [App\Controllers\AdminController::class, 'users']);
+Router::post('/admin/users/{id}/status',     [App\Controllers\AdminController::class, 'userStatus']);
+Router::post('/admin/users/{id}/delete',     [App\Controllers\AdminController::class, 'userDelete']);
+
+// Sellers
+Router::get('/admin/sellers',                [App\Controllers\AdminController::class, 'sellers']);
+Router::post('/admin/sellers/{id}/approve',  [App\Controllers\AdminController::class, 'sellerApprove']);
+Router::post('/admin/sellers/{id}/suspend',  [App\Controllers\AdminController::class, 'sellerSuspend']);
+Router::get('/admin/sellers/{id}/edit',      [App\Controllers\AdminController::class, 'sellerEdit']);
+Router::post('/admin/sellers/{id}',          [App\Controllers\AdminController::class, 'sellerUpdate']);
+
+// Products
+Router::get('/admin/products',                   [App\Controllers\AdminController::class, 'products']);
+Router::post('/admin/products/{id}/approve',     [App\Controllers\AdminController::class, 'productApprove']);
+Router::post('/admin/products/{id}/reject',      [App\Controllers\AdminController::class, 'productReject']);
+Router::post('/admin/products/{id}/feature',     [App\Controllers\AdminController::class, 'productFeature']);
+Router::post('/admin/products/{id}/delete',      [App\Controllers\AdminController::class, 'productDelete']);
+
+// Categories
+Router::get('/admin/categories',                 [App\Controllers\AdminController::class, 'categories']);
+Router::post('/admin/categories',                [App\Controllers\AdminController::class, 'categoryStore']);
+Router::post('/admin/categories/{id}',           [App\Controllers\AdminController::class, 'categoryUpdate']);
+Router::post('/admin/categories/{id}/delete',    [App\Controllers\AdminController::class, 'categoryDelete']);
+
+// Orders
+Router::get('/admin/orders',                     [App\Controllers\AdminController::class, 'orders']);
+Router::get('/admin/orders/{id}',                [App\Controllers\AdminController::class, 'order']);
+Router::post('/admin/orders/{id}/status',        [App\Controllers\AdminController::class, 'orderStatus']);
+
+// Reviews (moderation)
+Router::get('/admin/reviews',                    [App\Controllers\AdminController::class, 'reviews']);
+Router::post('/admin/reviews/{id}/{status}',     [App\Controllers\AdminController::class, 'reviewSet']);
+
+// Banners (homepage CMS)
+Router::get('/admin/banners',                    [App\Controllers\AdminController::class, 'banners']);
+Router::post('/admin/banners',                   [App\Controllers\AdminController::class, 'bannerStore']);
+Router::post('/admin/banners/{id}/delete',       [App\Controllers\AdminController::class, 'bannerDelete']);
+
+// Pages (static CMS)
+Router::get('/admin/pages',                      [App\Controllers\AdminController::class, 'pages']);
+Router::post('/admin/pages',                     [App\Controllers\AdminController::class, 'pageStore']);
+Router::post('/admin/pages/{id}',                [App\Controllers\AdminController::class, 'pageUpdate']);
+Router::post('/admin/pages/{id}/delete',         [App\Controllers\AdminController::class, 'pageDelete']);
+
+// Settings + audit log
+Router::get('/admin/settings',                   [App\Controllers\AdminController::class, 'settings']);
+Router::post('/admin/settings',                  [App\Controllers\AdminController::class, 'settingsSave']);
+Router::get('/admin/audit',                      [App\Controllers\AdminController::class, 'audit']);
+
+// ---- Customer reviews ----
+Router::post('/product/{slug}/review',           [App\Controllers\ProductController::class, 'storeReview']);
+Router::post('/account/reviews/{id}/delete',     [App\Controllers\AccountController::class, 'destroyReview']);

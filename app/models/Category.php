@@ -65,4 +65,32 @@ class Category extends \App\Core\Model
         }
         return $ids;
     }
+
+    /** Every category, parents first then children, for admin tables. */
+    public static function allOrdered(): array
+    {
+        return Database::fetchAll(
+            'SELECT * FROM categories ORDER BY COALESCE(parent_id, id), sort_order, name'
+        );
+    }
+
+    public static function findBySlugOrCreate(string $name): int
+    {
+        $slug = strtolower(trim(preg_replace('/[^A-Za-z0-9]+/', '-', $name), '-'));
+        $existing = self::findBySlug($slug);
+        if ($existing) {
+            return (int) $existing['id'];
+        }
+        return self::create(['name' => $name, 'slug' => $slug, 'sort_order' => 0]);
+    }
+
+    public static function hasChildren(int $id): bool
+    {
+        return (int) (Database::scalar('SELECT COUNT(*) FROM categories WHERE parent_id = ?', [$id]) ?? 0) > 0;
+    }
+
+    public static function hasProducts(int $id): bool
+    {
+        return (int) (Database::scalar('SELECT COUNT(*) FROM products WHERE category_id = ? AND deleted_at IS NULL', [$id]) ?? 0) > 0;
+    }
 }

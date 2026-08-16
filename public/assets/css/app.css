@@ -241,6 +241,18 @@ body .progress-bar{background-color:var(--brand)}
 .rich-text{line-height:1.7;color:#334155}
 .cms-page{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:2rem;line-height:1.7}
 
+/* ---- Phase 2: management tables & bits ---- */
+.dash-nav-head{font-size:.68rem;text-transform:uppercase;letter-spacing:.07em;color:#94a3b8;font-weight:700;padding:.7rem .6rem .15rem}
+.admin-toolbar{display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+table.tbl-compact td,table.tbl-compact th{padding:.45rem .55rem;vertical-align:middle}
+.thumb-sm{width:42px;height:42px;object-fit:cover;border-radius:6px;border:1px solid var(--line)}
+.review-form .star-input{display:inline-flex;flex-direction:row-reverse;justify-content:flex-end}
+.review-form .star-input input{display:none}
+.review-form .star-input label{font-size:1.6rem;color:#d1d5db;cursor:pointer}
+.review-form .star-input input:checked ~ label,
+.review-form .star-input label:hover,
+.review-form .star-input label:hover ~ label{color:#f59e0b}
+
 /* ---- Print (A4) ---- */
 @media print{
     @page{size:A4;margin:12mm}
